@@ -22,6 +22,7 @@ type PostController interface {
 	GetPostById(resp http.ResponseWriter, req *http.Request)
 	GetPosts(resp http.ResponseWriter, req *http.Request)
 	AddPost(resp http.ResponseWriter, req *http.Request)
+	DeletePost(resp http.ResponseWriter, req *http.Request)
 }
 
 func NewPostController(service service.PostService, cache cache.PostCache) PostController {
@@ -51,6 +52,19 @@ func (*controller) GetPostById(resp http.ResponseWriter, req *http.Request) {
 		resp.WriteHeader(http.StatusOK)
 		json.NewEncoder(resp).Encode(post)
 	}
+}
+
+func (*controller) DeletePost(resp http.ResponseWriter, req *http.Request) {
+	resp.Header().Set("Content-type", "application/json")
+
+	postID := strings.Split(req.URL.Path, "/")[2]
+	err := postService.Delete(postID)
+	if err != nil {
+		resp.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(resp).Encode(errors.ServiceError{Message: "Errore cancellazione " + err.Error()})
+		return
+	}
+	resp.WriteHeader(http.StatusOK)
 
 }
 
@@ -60,7 +74,7 @@ func (*controller) GetPosts(resp http.ResponseWriter, req *http.Request) {
 
 	if err != nil {
 		resp.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(resp).Encode(errors.ServiceError{Message: "Error retrieving the posts array"})
+		json.NewEncoder(resp).Encode(errors.ServiceError{Message: "Error retrieving the posts array\n" + err.Error()})
 		return
 	}
 
@@ -91,7 +105,7 @@ func (*controller) AddPost(resp http.ResponseWriter, req *http.Request) {
 	result, creationError := postService.Create(&post)
 	if creationError != nil {
 		resp.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(resp).Encode(errors.ServiceError{Message: "Error creating the post to save"})
+		json.NewEncoder(resp).Encode(errors.ServiceError{Message: "Error creating the post to save: " + creationError.Error()})
 		return
 	}
 	resp.WriteHeader(http.StatusOK)
