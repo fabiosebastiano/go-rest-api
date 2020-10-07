@@ -3,10 +3,13 @@ package controller
 import (
 	"bytes"
 	json "encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
+	"com.github/fabiosebastiano/go-rest-api/cache"
 	"com.github/fabiosebastiano/go-rest-api/entity"
 	"com.github/fabiosebastiano/go-rest-api/repository"
 	"com.github/fabiosebastiano/go-rest-api/service"
@@ -17,7 +20,8 @@ import (
 var (
 	postRepo       repository.PostRepository = repository.NewSQLiteRepository()
 	postSrv        service.PostService       = service.NewPostService(postRepo)
-	postController PostController            = NewPostController(postSrv)
+	postCacheSrv   cache.PostCache           = cache.NewRedisCache("localhost:6379", 0, 10)
+	postController PostController            = NewPostController(postSrv, postCacheSrv)
 )
 
 const (
@@ -58,7 +62,7 @@ func TestAddPost(t *testing.T) {
 	assert.Equal(t, TEXT, post.Text)
 
 	//cleanup db
-	cleanUp(&post)
+	tearDown(&post)
 }
 
 func TestGetPosts(t *testing.T) {
@@ -94,11 +98,48 @@ func TestGetPosts(t *testing.T) {
 	assert.Equal(t, TEXT, posts[0].Text)
 
 	//cleanup db
-	cleanUp(&posts[0])
+	tearDown(&posts[0])
 
 }
 
-func cleanUp(post *entity.Post) {
+func TestGetPostByID(t *testing.T) {
+
+	setUp()
+
+	request, _ := http.NewRequest("GET", "/posts/"+strconv.FormatInt(ID, 10), nil)
+
+	// 2) assegnare func all'handler
+	handler := http.HandlerFunc(postController.GetPostById)
+
+	// Record HTTP Response e httptest
+	resp := httptest.NewRecorder()
+
+	// Dispatch HTTP request
+	handler.ServeHTTP(resp, request)
+
+	// Add assertions on the status CODE e response
+	status := resp.Code
+
+	if status != http.StatusOK {
+		t.Errorf("Handler ha risposto con codice non ok: ottenuto %v atteso %v", status, http.StatusOK)
+	}
+
+	var post entity.Post
+	json.NewDecoder(io.Reader(resp.Body)).Decode(&post)
+
+	assert.NotNil(t, post.ID)
+	assert.NotNil(t, post.Title)
+	assert.NotNil(t, post.Text)
+
+	assert.Equal(t, TITLE, post.Title)
+	assert.Equal(t, TEXT, post.Text)
+
+	//clean db
+	tearDown(&post)
+
+}
+
+func tearDown(post *entity.Post) {
 	postRepo.Delete(post)
 }
 
