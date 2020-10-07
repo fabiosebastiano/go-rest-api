@@ -15,6 +15,7 @@ type PostService interface {
 	Create(post *entity.Post) (*entity.Post, error)
 	FindAll() ([]entity.Post, error)
 	FindByID(postID string) (*entity.Post, error)
+	Delete(postID string) error
 }
 
 type service struct{}
@@ -59,4 +60,13 @@ func (*service) FindByID(id string) (*entity.Post, error) {
 		return nil, err
 	}
 	return repo.FindByID(id)
+}
+
+func (*service) Delete(id string) error {
+
+	err := repo.Delete(id)
+	if err != nil {
+		return err
+	}
+	return nil
 }

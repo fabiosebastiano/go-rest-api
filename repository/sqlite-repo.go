@@ -97,7 +97,7 @@ func (*sqliteRepo) FindAll() ([]entity.Post, error) {
 	return posts, nil
 }
 
-func (*sqliteRepo) Delete(post *entity.Post) error {
+func (*sqliteRepo) Delete(postID string) error {
 	db, err := sql.Open("sqlite3", "./posts.db")
 	if err != nil {
 		log.Fatal(err)
@@ -115,7 +115,7 @@ func (*sqliteRepo) Delete(post *entity.Post) error {
 		return err
 	}
 	defer stmt.Close()
-	_, err = stmt.Exec(post.ID)
+	_, err = stmt.Exec(postID)
 	if err != nil {
 		log.Fatal(err)
 		return err
